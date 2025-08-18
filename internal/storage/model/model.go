@@ -1,10 +1,8 @@
 package model
 
-import "gorm.io/gorm"
-
 type (
 	Wallet struct {
-		gorm.Model
+		ID     uint `gorm:"primarykey"`
 		Amount uint `gorm:"not null;index" json:"amount"`
 	}
 )

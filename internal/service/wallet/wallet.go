@@ -1,6 +1,11 @@
 package wallet
 
-import "github.com/Denio1337/go-wallet-service/internal/storage"
+import (
+	"errors"
+
+	"github.com/Denio1337/go-wallet-service/internal/storage"
+	"github.com/Denio1337/go-wallet-service/internal/storage/model"
+)
 
 type (
 	GetByIDParams struct {
@@ -13,14 +18,22 @@ type (
 	}
 
 	UpdateParams struct {
-		ID     uint
-		Amount uint
+		ID            uint
+		Amount        uint
+		OperationType OperationType
 	}
 
 	UpdateResult struct {
 		ID     uint
 		Amount uint
 	}
+
+	OperationType string
+)
+
+const (
+	WithdrawOperation OperationType = "WITHDRAW"
+	DepositOperation  OperationType = "DEPOSIT"
 )
 
 func GetByID(params *GetByIDParams) (*GetByIDResult, error) {
@@ -36,5 +49,45 @@ func GetByID(params *GetByIDParams) (*GetByIDResult, error) {
 }
 
 func Update(params *UpdateParams) (*UpdateResult, error) {
-	return nil, nil
+	// Get wallet with specified ID
+	wallet, err := storage.GetWalletByID(params.ID)
+
+	// Unexpected error
+	if err != nil && err != storage.ErrNotFound {
+		return nil, err
+	}
+
+	// Wallet was not found
+	if err != nil {
+		// Trying to withdraw unexisting wallet
+		if params.OperationType == WithdrawOperation {
+			return nil, errors.New("wallet not found for withdraw")
+		}
+
+		wallet = &model.Wallet{ID: params.ID, Amount: 0}
+	}
+
+	// Deposit or withdraw amount of wallet
+	switch params.OperationType {
+	case WithdrawOperation:
+		if wallet.Amount < params.Amount {
+			return nil, errors.New("insufficient funds")
+		}
+		wallet.Amount -= params.Amount
+	case DepositOperation:
+		wallet.Amount += params.Amount
+	default:
+		return nil, errors.New("invalid operation type")
+	}
+
+	// Update wallet in DB
+	wallet, err = storage.UpdateWallet(wallet)
+	if err != nil {
+		return nil, err
+	}
+
+	return &UpdateResult{
+		ID:     wallet.ID,
+		Amount: wallet.Amount,
+	}, nil
 }

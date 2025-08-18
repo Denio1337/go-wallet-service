@@ -48,10 +48,6 @@ func New() (contract.Storage, error) {
 }
 
 func (s *PostgresStorage) UpdateWallet(wallet *model.Wallet) (*model.Wallet, error) {
-	if wallet == nil {
-		return nil, gorm.ErrInvalidData
-	}
-
 	// Create or update wallet
 	err := s.db.Save(wallet).Error
 	if err != nil {
@@ -65,6 +61,9 @@ func (s *PostgresStorage) GetWalletByID(id uint) (*model.Wallet, error) {
 	var wallet model.Wallet
 
 	err := s.db.First(&wallet, id).Error
+	if err != nil && err == gorm.ErrRecordNotFound {
+		return nil, contract.ErrNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
