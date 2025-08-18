@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/Denio1337/go-wallet-service/internal/storage"
-	"github.com/Denio1337/go-wallet-service/internal/storage/model"
 )
 
 type (
@@ -36,9 +35,21 @@ const (
 	DepositOperation  OperationType = "DEPOSIT"
 )
 
+// Custom errors
+var (
+	ErrBadWithdraw       = errors.New("wallet not found for withdraw")
+	ErrInsufficientFunds = errors.New("insufficient funds")
+	ErrInvalidOperation  = errors.New("invalid operation type")
+	ErrNotFound          = errors.New("wallet not found")
+)
+
 func GetByID(params *GetByIDParams) (*GetByIDResult, error) {
 	wallet, err := storage.GetWalletByID(params.ID)
 	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			return nil, ErrNotFound
+		}
+
 		return nil, err
 	}
 
@@ -49,45 +60,24 @@ func GetByID(params *GetByIDParams) (*GetByIDResult, error) {
 }
 
 func Update(params *UpdateParams) (*UpdateResult, error) {
-	// Get wallet with specified ID
-	wallet, err := storage.GetWalletByID(params.ID)
-
-	// Unexpected error
-	if err != nil && err != storage.ErrNotFound {
-		return nil, err
-	}
-
-	// Wallet was not found
-	if err != nil {
-		// Trying to withdraw unexisting wallet
-		if params.OperationType == WithdrawOperation {
-			return nil, errors.New("wallet not found for withdraw")
-		}
-
-		wallet = &model.Wallet{ID: params.ID, Amount: 0}
-	}
-
-	// Deposit or withdraw amount of wallet
-	switch params.OperationType {
-	case WithdrawOperation:
-		if wallet.Amount < params.Amount {
-			return nil, errors.New("insufficient funds")
-		}
-		wallet.Amount -= params.Amount
-	case DepositOperation:
-		wallet.Amount += params.Amount
-	default:
-		return nil, errors.New("invalid operation type")
+	// Negative amount if operation is withdraw
+	amount := int(params.Amount)
+	if params.OperationType == WithdrawOperation {
+		amount = -amount
 	}
 
 	// Update wallet in DB
-	wallet, err = storage.UpdateWallet(wallet)
+	newAmount, err := storage.UpdateWallet(params.ID, amount)
 	if err != nil {
+		if errors.Is(err, storage.ErrInvalidOperation) {
+			return nil, ErrInsufficientFunds
+		}
+
 		return nil, err
 	}
 
 	return &UpdateResult{
-		ID:     wallet.ID,
-		Amount: wallet.Amount,
+		ID:     params.ID,
+		Amount: newAmount,
 	}, nil
 }

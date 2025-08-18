@@ -1,7 +1,12 @@
 package wallet
 
 import (
+	"errors"
+
+	"github.com/Denio1337/go-wallet-service/internal/router/types"
+	cerror "github.com/Denio1337/go-wallet-service/internal/router/types/error"
 	"github.com/Denio1337/go-wallet-service/internal/router/types/response"
+	"github.com/Denio1337/go-wallet-service/internal/router/validator"
 	"github.com/Denio1337/go-wallet-service/internal/service/wallet"
 	"github.com/gofiber/fiber/v2"
 )
@@ -12,12 +17,17 @@ type UpdateDTO struct {
 	Amount        uint   `json:"amount" validate:"required,gt=0"`
 }
 
+var (
+	ErrWalletID = fiber.NewError(fiber.StatusBadRequest, "incorrect wallet ID specified")
+	ErrUpdate   = fiber.NewError(fiber.StatusBadRequest, "incorrect input")
+)
+
 // Get wallet by ID
 func GetByID(c *fiber.Ctx) error {
 	// Parse wallet ID from URL
-	id, _ := c.ParamsInt("id", 0)
+	id, _ := c.ParamsInt(types.WalletIDParam, types.WalletIDDefault)
 	if id <= 0 {
-		return fiber.NewError(fiber.StatusBadRequest, "incorrect wallet ID specified")
+		return ErrWalletID
 	}
 
 	// Route to service
@@ -27,7 +37,11 @@ func GetByID(c *fiber.Ctx) error {
 
 	// Handle service error
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		if errors.Is(err, wallet.ErrNotFound) {
+			return fiber.NewError(fiber.StatusNotFound, err.Error())
+		}
+
+		return err
 	}
 
 	return c.JSON(response.SuccessResponse(result))
@@ -38,7 +52,12 @@ func Update(c *fiber.Ctx) error {
 	// Parse body
 	dto := new(UpdateDTO)
 	if err := c.BodyParser(dto); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, "incorrect input")
+		return ErrUpdate
+	}
+
+	// Validate body
+	if errs := validator.Validate(dto); len(errs) > 0 {
+		return cerror.ValidationError(errs)
 	}
 
 	// Route to service
@@ -50,7 +69,13 @@ func Update(c *fiber.Ctx) error {
 
 	// Handle service error
 	if err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+		if errors.Is(err, wallet.ErrBadWithdraw) ||
+			errors.Is(err, wallet.ErrInsufficientFunds) ||
+			errors.Is(err, wallet.ErrInvalidOperation) {
+			return fiber.NewError(fiber.ErrBadRequest.Code, err.Error())
+		}
+
+		return err
 	}
 
 	return c.JSON(response.SuccessResponse(result))

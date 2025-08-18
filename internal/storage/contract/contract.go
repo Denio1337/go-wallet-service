@@ -7,10 +7,11 @@ import (
 )
 
 type Storage interface {
-	UpdateWallet(*model.Wallet) (*model.Wallet, error)
+	UpdateWallet(uint, int) (uint, error)
 	GetWalletByID(uint) (*model.Wallet, error)
 }
 
 var (
-	ErrNotFound = errors.New("wallet not found")
+	ErrNotFound         = errors.New("wallet not found")
+	ErrInvalidOperation = errors.New("invalid wallet operation")
 )

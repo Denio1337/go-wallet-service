@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -11,7 +12,6 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type PostgresStorage struct {
@@ -59,52 +59,42 @@ func New() (contract.Storage, error) {
 	return &PostgresStorage{db: db}, nil
 }
 
-// func (s *PostgresStorage) UpdateWallet(wallet *model.Wallet) (*model.Wallet, error) {
-// 	// Create or update wallet
-// 	err := s.db.Save(wallet).Error
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return wallet, nil
-// }
-
-func (s *PostgresStorage) UpdateWallet(wallet *model.Wallet) (*model.Wallet, error) {
-	var updated *model.Wallet
+func (s *PostgresStorage) UpdateWallet(id uint, amount int) (uint, error) {
+	var newAmount uint
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		var dbWallet model.Wallet
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&dbWallet, wallet.ID).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				dbWallet = *wallet
-			} else {
-				return err
-			}
-		} else {
-			dbWallet.Amount = wallet.Amount
+		row := tx.Raw(`
+            INSERT INTO wallets (id, amount)
+            VALUES (?, ?)
+            ON CONFLICT (id) DO UPDATE
+                SET amount = wallets.amount + EXCLUDED.amount
+                WHERE wallets.amount + EXCLUDED.amount >= 0
+            RETURNING amount;
+        `, id, amount).Row()
+
+		if scanErr := row.Scan(&newAmount); scanErr != nil {
+			return contract.ErrInvalidOperation
 		}
 
-		if err := tx.Save(&dbWallet).Error; err != nil {
-			return err
-		}
-		updated = &dbWallet
 		return nil
 	})
 
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	return updated, nil
+
+	return newAmount, nil
 }
 
 func (s *PostgresStorage) GetWalletByID(id uint) (*model.Wallet, error) {
 	var wallet model.Wallet
 
 	err := s.db.First(&wallet, id).Error
-	if err != nil && err == gorm.ErrRecordNotFound {
-		return nil, contract.ErrNotFound
-	}
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, contract.ErrNotFound
+		}
+
 		return nil, err
 	}
 

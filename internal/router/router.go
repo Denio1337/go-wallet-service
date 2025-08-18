@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/Denio1337/go-wallet-service/internal/router/handler/wallet"
+	"github.com/Denio1337/go-wallet-service/internal/router/types"
 	"github.com/Denio1337/go-wallet-service/internal/router/types/response"
 
 	"github.com/gofiber/fiber/v2"
@@ -28,11 +29,11 @@ func New() *fiber.App {
 // Set router api
 func setupRoutes(app *fiber.App) {
 	// General API group
-	apiGroup := app.Group("/api/v1", logger.New())
+	apiGroup := app.Group(types.ApiPath, logger.New())
 
 	// Wallet group
-	walletGroup := apiGroup.Group("/wallets")
-	walletGroup.Get("/:id", wallet.GetByID)
+	walletGroup := apiGroup.Group(types.WalletsPath)
+	walletGroup.Get("/:"+types.WalletIDParam, wallet.GetByID)
 	walletGroup.Post("/", wallet.Update)
 }
 

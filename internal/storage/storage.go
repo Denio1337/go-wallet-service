@@ -20,12 +20,13 @@ func GetWalletByID(id uint) (*model.Wallet, error) {
 	return instance.GetWalletByID(id)
 }
 
-func UpdateWallet(wallet *model.Wallet) (*model.Wallet, error) {
-	return instance.UpdateWallet(wallet)
+func UpdateWallet(id uint, amount int) (uint, error) {
+	return instance.UpdateWallet(id, amount)
 }
 
 // Errors
 
 var (
-	ErrNotFound = contract.ErrNotFound
+	ErrNotFound         = contract.ErrNotFound
+	ErrInvalidOperation = contract.ErrInvalidOperation
 )

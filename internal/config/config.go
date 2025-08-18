@@ -11,18 +11,18 @@ import (
 // Flags
 const (
 	// Config flag name
-	config_flag = "config"
+	configFlag = "config"
 
 	// Default config file path
-	config_default_path = "config.env"
+	configPath = "config.env"
 
 	// Config flag description
-	config_flag_description = "path to config file"
+	configFlagDescr = "path to config file"
 )
 
 func init() {
 	// Get config path from cmd flag
-	configPath := flag.String(config_flag, config_default_path, config_flag_description)
+	configPath := flag.String(configFlag, configPath, configFlagDescr)
 	flag.Parse()
 
 	// Load .env file
