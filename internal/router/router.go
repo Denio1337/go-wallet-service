@@ -32,7 +32,7 @@ func setupRoutes(app *fiber.App) {
 
 	// Wallet group
 	walletGroup := apiGroup.Group("/wallets")
-	walletGroup.Get("/", wallet.GetByID)
+	walletGroup.Get("/:id", wallet.GetByID)
 	walletGroup.Post("/", wallet.Update)
 }
 
