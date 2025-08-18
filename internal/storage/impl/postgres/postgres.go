@@ -3,6 +3,7 @@ package postgres
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/Denio1337/go-wallet-service/internal/config"
 	"github.com/Denio1337/go-wallet-service/internal/storage/contract"
@@ -10,6 +11,7 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type PostgresStorage struct {
@@ -44,17 +46,55 @@ func New() (contract.Storage, error) {
 	// Migrate schemas to database
 	db.AutoMigrate(&model.Wallet{})
 
-	return &PostgresStorage{db: db}, nil
-}
-
-func (s *PostgresStorage) UpdateWallet(wallet *model.Wallet) (*model.Wallet, error) {
-	// Create or update wallet
-	err := s.db.Save(wallet).Error
+	// Configure GORM connection pool
+	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, err
 	}
 
-	return wallet, nil
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetMaxIdleConns(20)
+	sqlDB.SetConnMaxLifetime(time.Minute)
+
+	return &PostgresStorage{db: db}, nil
+}
+
+// func (s *PostgresStorage) UpdateWallet(wallet *model.Wallet) (*model.Wallet, error) {
+// 	// Create or update wallet
+// 	err := s.db.Save(wallet).Error
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return wallet, nil
+// }
+
+func (s *PostgresStorage) UpdateWallet(wallet *model.Wallet) (*model.Wallet, error) {
+	var updated *model.Wallet
+
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		var dbWallet model.Wallet
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&dbWallet, wallet.ID).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				dbWallet = *wallet
+			} else {
+				return err
+			}
+		} else {
+			dbWallet.Amount = wallet.Amount
+		}
+
+		if err := tx.Save(&dbWallet).Error; err != nil {
+			return err
+		}
+		updated = &dbWallet
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return updated, nil
 }
 
 func (s *PostgresStorage) GetWalletByID(id uint) (*model.Wallet, error) {
