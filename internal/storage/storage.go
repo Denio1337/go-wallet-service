@@ -3,7 +3,6 @@ package storage
 import (
 	"github.com/Denio1337/go-wallet-service/internal/storage/contract"
 	"github.com/Denio1337/go-wallet-service/internal/storage/impl"
-	"github.com/Denio1337/go-wallet-service/internal/storage/model"
 )
 
 // Global storage instance
@@ -16,8 +15,8 @@ func init() {
 
 // Interface
 
-func GetWalletByID(id uint) (*model.Wallet, error) {
-	return instance.GetWalletByID(id)
+func GetWalletBalance(id uint) (uint, error) {
+	return instance.GetWalletBalance(id)
 }
 
 func UpdateWallet(id uint, amount int) (uint, error) {

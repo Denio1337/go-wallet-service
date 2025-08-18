@@ -44,7 +44,7 @@ var (
 )
 
 func GetByID(params *GetByIDParams) (*GetByIDResult, error) {
-	wallet, err := storage.GetWalletByID(params.ID)
+	amount, err := storage.GetWalletBalance(params.ID)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			return nil, ErrNotFound
@@ -54,8 +54,8 @@ func GetByID(params *GetByIDParams) (*GetByIDResult, error) {
 	}
 
 	return &GetByIDResult{
-		ID:     wallet.ID,
-		Amount: wallet.Amount,
+		ID:     params.ID,
+		Amount: amount,
 	}, nil
 }
 

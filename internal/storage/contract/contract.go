@@ -2,13 +2,11 @@ package contract
 
 import (
 	"errors"
-
-	"github.com/Denio1337/go-wallet-service/internal/storage/model"
 )
 
 type Storage interface {
 	UpdateWallet(uint, int) (uint, error)
-	GetWalletByID(uint) (*model.Wallet, error)
+	GetWalletBalance(uint) (uint, error)
 }
 
 var (
