@@ -11,11 +11,18 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type UpdateDTO struct {
-	WalletID      uint   `json:"walletID" validate:"required,gt=0"`
-	OperationType string `json:"operationType" validate:"required,oneof=WITHDRAW DEPOSIT"`
-	Amount        uint   `json:"amount" validate:"required,gt=0"`
-}
+type (
+	UpdateDTO struct {
+		WalletID      uint   `json:"walletID" validate:"required,gt=0"`
+		OperationType string `json:"operationType" validate:"required,oneof=WITHDRAW DEPOSIT"`
+		Amount        uint   `json:"amount" validate:"required,gt=0"`
+	}
+
+	Wallet struct {
+		ID     uint `json:"id"`
+		Amount uint `json:"amount"`
+	}
+)
 
 var (
 	ErrWalletID = fiber.NewError(fiber.StatusBadRequest, "incorrect wallet ID specified")
@@ -44,7 +51,10 @@ func GetByID(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.JSON(response.SuccessResponse(result))
+	return c.JSON(response.SuccessResponse(&Wallet{
+		ID:     result.ID,
+		Amount: result.Amount,
+	}))
 }
 
 // Update wallet
@@ -78,5 +88,8 @@ func Update(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.JSON(response.SuccessResponse(result))
+	return c.JSON(response.SuccessResponse(&Wallet{
+		ID:     result.ID,
+		Amount: result.Amount,
+	}))
 }
