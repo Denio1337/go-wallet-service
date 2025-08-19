@@ -11,6 +11,15 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+type Handler interface {
+	GetByID(c *fiber.Ctx) error
+	Update(c *fiber.Ctx) error
+}
+
+type handler struct {
+	service wallet.Service
+}
+
 type (
 	UpdateDTO struct {
 		WalletID      uint   `json:"walletID" validate:"required,gt=0"`
@@ -29,8 +38,14 @@ var (
 	ErrUpdate   = fiber.NewError(fiber.StatusBadRequest, "incorrect input")
 )
 
+func New(service wallet.Service) Handler {
+	return &handler{
+		service: service,
+	}
+}
+
 // Get wallet by ID
-func GetByID(c *fiber.Ctx) error {
+func (h *handler) GetByID(c *fiber.Ctx) error {
 	// Parse wallet ID from URL
 	id, _ := c.ParamsInt(types.WalletIDParam, types.WalletIDDefault)
 	if id <= 0 {
@@ -38,9 +53,7 @@ func GetByID(c *fiber.Ctx) error {
 	}
 
 	// Route to service
-	result, err := wallet.GetByID(&wallet.GetByIDParams{
-		ID: uint(id),
-	})
+	result, err := h.service.GetByID(uint(id))
 
 	// Handle service error
 	if err != nil {
@@ -58,7 +71,7 @@ func GetByID(c *fiber.Ctx) error {
 }
 
 // Update wallet
-func Update(c *fiber.Ctx) error {
+func (h *handler) Update(c *fiber.Ctx) error {
 	// Parse body
 	dto := new(UpdateDTO)
 	if err := c.BodyParser(dto); err != nil {
@@ -71,7 +84,7 @@ func Update(c *fiber.Ctx) error {
 	}
 
 	// Route to service
-	result, err := wallet.Update(&wallet.UpdateParams{
+	result, err := h.service.Update(&wallet.UpdateParams{
 		ID:            dto.WalletID,
 		Amount:        dto.Amount,
 		OperationType: wallet.OperationType(dto.OperationType),

@@ -3,22 +3,43 @@ package router
 import (
 	"errors"
 
+	"github.com/Denio1337/go-wallet-service/internal/config"
 	"github.com/Denio1337/go-wallet-service/internal/router/handler/wallet"
 	"github.com/Denio1337/go-wallet-service/internal/router/types"
 	"github.com/Denio1337/go-wallet-service/internal/router/types/response"
+	sw "github.com/Denio1337/go-wallet-service/internal/service/wallet"
+	"github.com/Denio1337/go-wallet-service/internal/storage/contract"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 )
 
-// Create and configure Fiber application
-func New() *fiber.App {
-	router := fiber.New(fiber.Config{
+type Router struct {
+	App     *fiber.App
+	Storage contract.Storage
+	Config  *config.Config
+}
+
+func (r *Router) Serve() error {
+	return r.App.Listen(r.Config.Address)
+}
+
+// Create and configure application router
+func New(cfg *config.Config, storage contract.Storage) *Router {
+	// Initialize Fiber application
+	fiberApp := fiber.New(fiber.Config{
 		Prefork:      true,                // Spawn multiple Go processes listening on the same port
 		ServerHeader: "Go Wallet Service", // Set "Server" HTTP-header
 		AppName:      "Go Wallet Service",
 		ErrorHandler: handleError,
 	})
+
+	// Inject storage and config into the router
+	router := &Router{
+		App:     fiberApp,
+		Storage: storage,
+		Config:  cfg,
+	}
 
 	// Configure endpoints
 	setupRoutes(router)
@@ -27,14 +48,16 @@ func New() *fiber.App {
 }
 
 // Set router api
-func setupRoutes(app *fiber.App) {
+func setupRoutes(router *Router) {
 	// General API group
-	apiGroup := app.Group(types.ApiPath, logger.New())
+	apiGroup := router.App.Group(types.ApiPath, logger.New())
 
 	// Wallet group
 	walletGroup := apiGroup.Group(types.WalletsPath)
-	walletGroup.Get("/:"+types.WalletIDParam, wallet.GetByID)
-	walletGroup.Post("/", wallet.Update)
+	walletService := sw.New(router.Storage)
+	walletHandler := wallet.New(walletService)
+	walletGroup.Get("/:"+types.WalletIDParam, walletHandler.GetByID)
+	walletGroup.Post("/", walletHandler.Update)
 }
 
 // Handle error response

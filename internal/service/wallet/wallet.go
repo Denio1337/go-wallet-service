@@ -4,14 +4,20 @@ import (
 	"errors"
 
 	"github.com/Denio1337/go-wallet-service/internal/storage"
+	"github.com/Denio1337/go-wallet-service/internal/storage/contract"
 )
 
-type (
-	GetByIDParams struct {
-		ID uint
-	}
+type Service interface {
+	GetByID(id uint) (*Wallet, error)
+	Update(params *UpdateParams) (*Wallet, error)
+}
 
-	GetByIDResult struct {
+type service struct {
+	storage contract.Storage
+}
+
+type (
+	Wallet struct {
 		ID     uint
 		Amount uint
 	}
@@ -20,11 +26,6 @@ type (
 		ID            uint
 		Amount        uint
 		OperationType OperationType
-	}
-
-	UpdateResult struct {
-		ID     uint
-		Amount uint
 	}
 
 	OperationType string
@@ -43,8 +44,14 @@ var (
 	ErrNotFound          = errors.New("wallet not found")
 )
 
-func GetByID(params *GetByIDParams) (*GetByIDResult, error) {
-	amount, err := storage.GetWalletBalance(params.ID)
+func New(storage contract.Storage) Service {
+	return &service{
+		storage: storage,
+	}
+}
+
+func (s *service) GetByID(id uint) (*Wallet, error) {
+	amount, err := s.storage.GetWalletBalance(id)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			return nil, ErrNotFound
@@ -53,13 +60,13 @@ func GetByID(params *GetByIDParams) (*GetByIDResult, error) {
 		return nil, err
 	}
 
-	return &GetByIDResult{
-		ID:     params.ID,
+	return &Wallet{
+		ID:     id,
 		Amount: amount,
 	}, nil
 }
 
-func Update(params *UpdateParams) (*UpdateResult, error) {
+func (s *service) Update(params *UpdateParams) (*Wallet, error) {
 	// Negative amount if operation is withdraw
 	amount := int(params.Amount)
 	if params.OperationType == WithdrawOperation {
@@ -67,7 +74,7 @@ func Update(params *UpdateParams) (*UpdateResult, error) {
 	}
 
 	// Update wallet in DB
-	newAmount, err := storage.UpdateWallet(params.ID, amount)
+	newAmount, err := s.storage.UpdateWallet(params.ID, amount)
 	if err != nil {
 		if errors.Is(err, storage.ErrInvalidOperation) {
 			return nil, ErrInsufficientFunds
@@ -76,7 +83,7 @@ func Update(params *UpdateParams) (*UpdateResult, error) {
 		return nil, err
 	}
 
-	return &UpdateResult{
+	return &Wallet{
 		ID:     params.ID,
 		Amount: newAmount,
 	}, nil

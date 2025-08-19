@@ -4,44 +4,36 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strconv"
+	"log"
 	"time"
 
 	"github.com/Denio1337/go-wallet-service/internal/config"
 	"github.com/Denio1337/go-wallet-service/internal/storage/contract"
 	"github.com/Denio1337/go-wallet-service/internal/storage/model"
-
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-type PostgresStorage struct {
+type postgresStorage struct {
 	db *gorm.DB
 }
 
 // Create new PostgreSQL storage implementation
-func New() (contract.Storage, error) {
-	// Parse port from environment
-	p := config.Get(config.EnvDBPort)
-	port, err := strconv.ParseUint(p, 10, 32)
-	if err != nil {
-		return nil, err
-	}
-
+func New(cfg *config.StorageConfig) contract.Storage {
 	// Define data source
 	dsn := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		config.Get(config.EnvDBHost),
-		port,
-		config.Get(config.EnvDBUser),
-		config.Get(config.EnvDBPassword),
-		config.Get(config.EnvDBName),
+		cfg.Host,
+		cfg.Port,
+		cfg.User,
+		cfg.Password,
+		cfg.Name,
 	)
 
 	// Try to connect with default gorm config
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		return nil, err
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
 	// Migrate schemas to database
@@ -50,17 +42,16 @@ func New() (contract.Storage, error) {
 	// Configure GORM connection pool
 	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, err
+		log.Fatalf("Failed to get database connection: %v", err)
 	}
-
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetMaxIdleConns(20)
 	sqlDB.SetConnMaxLifetime(time.Minute)
 
-	return &PostgresStorage{db: db}, nil
+	return &postgresStorage{db: db}
 }
 
-func (s *PostgresStorage) UpdateWallet(id uint, amount int) (uint, error) {
+func (s *postgresStorage) UpdateWallet(id uint, amount int) (uint, error) {
 	var newAmount uint
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
@@ -87,7 +78,7 @@ func (s *PostgresStorage) UpdateWallet(id uint, amount int) (uint, error) {
 	return newAmount, nil
 }
 
-func (s *PostgresStorage) GetWalletBalance(id uint) (uint, error) {
+func (s *postgresStorage) GetWalletBalance(id uint) (uint, error) {
 	var balance uint
 
 	row := s.db.Raw(`SELECT amount FROM wallets WHERE id = ?;`, id).Row()

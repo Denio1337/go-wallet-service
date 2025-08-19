@@ -5,10 +5,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/joho/godotenv"
+	"github.com/ilyakaznacheev/cleanenv"
 )
 
-// Flags
 const (
 	// Config flag name
 	configFlag = "config"
@@ -19,28 +18,6 @@ const (
 	// Config flag description
 	configFlagDescr = "path to config file"
 )
-
-func init() {
-	// Get config path from cmd flag
-	configPath := flag.String(configFlag, configPath, configFlagDescr)
-	flag.Parse()
-
-	// Load .env file
-	err := godotenv.Load(*configPath)
-	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
-	}
-}
-
-// Get .env value by key
-func Get(key EnvKey) string {
-	// Return default value "" if env key is invalid
-	if !key.isValid() {
-		return ""
-	}
-
-	return os.Getenv(string(key))
-}
 
 type Config struct {
 	AppConfig
@@ -56,5 +33,24 @@ type StorageConfig struct {
 	Port     int    `env:"DB_PORT"`
 	User     string `env:"DB_USER"`
 	Password string `env:"DB_PASSWORD"`
-	DBName   string `env:"DB_NAME"`
+	Name     string `env:"DB_NAME"`
+}
+
+func MustLoad() *Config {
+	// Get config path from cmd flag
+	configPath := flag.String(configFlag, configPath, configFlagDescr)
+	flag.Parse()
+
+	// Check if file exists
+	if _, err := os.Stat(*configPath); os.IsNotExist(err) {
+		log.Fatalf("config file does not exist: %s", *configPath)
+	}
+
+	var cfg Config
+
+	if err := cleanenv.ReadConfig(*configPath, &cfg); err != nil {
+		log.Fatalf("Error reading config file: %s", err)
+	}
+
+	return &cfg
 }
