@@ -13,10 +13,10 @@ func main() {
 	cfg := config.MustLoad()
 
 	// Initialize storage
-	storage := storage.New(cfg.StorageConfig)
+	storage := storage.New(&cfg.StorageConfig)
 
 	// Create application instance
-	router := router.New(cfg, storage)
+	router := router.New(&cfg.AppConfig, storage)
 
 	// Run application
 	log.Fatal(router.Serve())

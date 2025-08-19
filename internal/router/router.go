@@ -17,7 +17,7 @@ import (
 type Router struct {
 	App     *fiber.App
 	Storage contract.Storage
-	Config  *config.Config
+	Config  *config.AppConfig
 }
 
 func (r *Router) Serve() error {
@@ -25,7 +25,7 @@ func (r *Router) Serve() error {
 }
 
 // Create and configure application router
-func New(cfg *config.Config, storage contract.Storage) *Router {
+func New(cfg *config.AppConfig, storage contract.Storage) *Router {
 	// Initialize Fiber application
 	fiberApp := fiber.New(fiber.Config{
 		Prefork:      true,                // Spawn multiple Go processes listening on the same port

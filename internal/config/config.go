@@ -20,8 +20,8 @@ const (
 )
 
 type Config struct {
-	*AppConfig
-	*StorageConfig
+	AppConfig
+	StorageConfig
 }
 
 type AppConfig struct {
