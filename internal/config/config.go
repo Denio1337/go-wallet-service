@@ -20,8 +20,8 @@ const (
 )
 
 type Config struct {
-	AppConfig
-	StorageConfig
+	*AppConfig
+	*StorageConfig
 }
 
 type AppConfig struct {
@@ -48,6 +48,7 @@ func MustLoad() *Config {
 
 	var cfg Config
 
+	// Read config from file
 	if err := cleanenv.ReadConfig(*configPath, &cfg); err != nil {
 		log.Fatalf("Error reading config file: %s", err)
 	}
