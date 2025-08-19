@@ -41,3 +41,20 @@ func Get(key EnvKey) string {
 
 	return os.Getenv(string(key))
 }
+
+type Config struct {
+	AppConfig
+	StorageConfig
+}
+
+type AppConfig struct {
+	Address string `env:"APP_ADDRESS"`
+}
+
+type StorageConfig struct {
+	Host     string `env:"DB_HOST"`
+	Port     int    `env:"DB_PORT"`
+	User     string `env:"DB_USER"`
+	Password string `env:"DB_PASSWORD"`
+	DBName   string `env:"DB_NAME"`
+}
